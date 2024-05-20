@@ -12,8 +12,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "crypto": "^1.0.1",
     "dns": "^0.2.2",
     "dotenv": "^16.4.5",
+    "ip": "^2.0.1",
     "net": "^1.0.2"
   },
   "devDependencies": {

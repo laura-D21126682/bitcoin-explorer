@@ -40,7 +40,7 @@ const nodeConnection = async () => {
 
         // incoming data
         socket.on('data', (data) => {
-          console.log('Redeived: ', data.toSring('hex'));
+        console.log('Redeived: ', data.toSring('hex'));
         });
 
         // TODO: Implement handshake logic
@@ -59,3 +59,11 @@ const nodeConnection = async () => {
 
 // run connection
 nodeConnection();
+
+/**
+ * Handshake Process
+ * - Send version message
+ * - Receive version message
+ * - Send verack message
+ * - Receive verack message
+ */
