@@ -1,3 +1,16 @@
+
+class Verack {
+  constructor() {
+    this.command = 'verack';
+  }
+  serialise() {
+    return Buffer.alloc(0); // returns empty payload
+  }
+}
+
+
+module.exports = Verack;
+
 /**
  * Verack Message:
  * - https://learnmeabitcoin.com/technical/networking/#version

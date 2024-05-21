@@ -1,5 +1,6 @@
 
 const ip = require('ip');
+const crypto = require('crypto');
 
 /**
  * Function to convert int to little endian byte sequence - ensures buffer is specified size
@@ -26,7 +27,7 @@ const intToLittleEndian = (int, length) => {
  * - Converts 4 Byte IPv4 address to 16 Byte IPv6 address buffer
  * - Else directly converts IPv6 address to buffer
  * - Uses npm IP to verify ip address format
- * @param {*} ip - ip address
+ * @param {*} ipAddress - ip address
  */
 const ipToBuffer = (ipAddress) => {
   // if IPv4
@@ -43,10 +44,21 @@ const ipToBuffer = (ipAddress) => {
   }
 }
 
+/**
+ * Function hash256 performs a double sha256 hashing on data input and returns result buffer
+ * - Uses npm crypto to perform two rounds sha256 hashing 
+ * @param {*} input - input to be hashed
+ */
+const hash256 = (input) => {
+  const singleHash = crypto.createHash('sha256').update(input).digest(); // first hash round
+  return crypto.createHash('sha256').update(singleHash).digest(); // second hash round
+}
+
 
 
 
 module.exports = {
   intToLittleEndian,
   ipToBuffer,
+  hash256,
 }

@@ -1,27 +1,13 @@
 
-const net = require('net');
+const createConnection = require('./create-connection');
 const getIps = require('./dns_resolver');
+const { versionMessage, verackMessage } = require('../services/messageService');
 require('dotenv').config();
 
 // Import .env vars
 const BTC_PORT = process.env.BTC_PORT;
 const DNS_SEED = process.env.DNS_SEED;
 
-// Promise
-const createConnection = (port, host) => {
-  return new Promise((resolve, reject) => {
-    const socket = net.createConnection({ port, host });
-    socket.once('connect', () => {
-      console.log(`Connected to node ${host}:${port}`)
-      resolve(socket);
-    });
-    socket.once('error', (err) => { 
-      console.error(`Error connecting to node ${host}:${port}`);
-      reject(err);
-    });
-    socket.once('end', () => console.log(`Disconnected from node ${host}:${port}`));
-  });
-}
 
 
 const nodeConnection = async () => {
@@ -38,13 +24,27 @@ const nodeConnection = async () => {
       try {
         const socket = await createConnection(BTC_PORT, address);
 
-        // incoming data
-        socket.on('data', (data) => {
-        console.log('Redeived: ', data.toSring('hex'));
-        });
+        // 1. Send version message
+        const networkVersionMessage = versionMessage();
+        socket.write(networkVersionMessage);
+        console.log('Sent: Version Message');
 
-        // TODO: Implement handshake logic
-        // Successful connection should exit
+        // Listen for incoming version message
+        socket.on('data', (data) => {
+          console.log('Received: ', data.toString('hex')); // 2. Receive version message
+          const command = data.slice(4, 16).toString('ascii').replace(/\0/g, ''); // Extract command from received message
+          console.log(`Received command: ${command}`);
+
+
+          if (command === 'version') { // If received Version
+            const networkVerackMessage = verackMessage(); // 3. Send verack message
+            socket.write(networkVerackMessage);
+            console.log('Sent: Verack Message');
+          } else if (command === 'verack') {
+            console.log(`Handshake complete with: ${address}`); // 4. Receive verack message
+            // process.exit(0); // Successful handshake exit?
+          }
+        });
 
       } catch (err) {
         console.error(`Error connecting to address ${address}: `, err);

@@ -1,4 +1,5 @@
 
+
 const crypto = require('crypto');
 const { intToLittleEndian, ipToBuffer } = require('../utils/helper');
 
@@ -14,7 +15,7 @@ class Version {
     senderIp = '0.0.0.0',
     sender_port = 8333,
     nonce = crypto.randomBytes(8), // crypto lib generates secure 8 byte random nonce
-    user_agent = Buffer.from('00'), // default no agent name
+    user_agent = 'bitcoin-explorer/0.1', // default no agent name
     last_block = 0,
     relay = false,
   } = {}) {
@@ -29,34 +30,35 @@ class Version {
     this.senderIp = ipToBuffer(senderIp); // converts string ip address to buffer (16 bytes)
     this.sender_port = sender_port;
     this.nonce = nonce;
-    this.user_agent = user_agent;
+    this.user_agent = Buffer.from(user_agent);
     this.last_block = last_block;
     this.relay = relay;
   }
+
+  serialise() {
+    // serialises version fields into buffer of bytes for transmission over the Bitcoin network
+    return Buffer.concat([
+      intToLittleEndian(this.version, 4), // 4 byte buffer
+      intToLittleEndian(this.services, 8), // 8 byte buffer
+      intToLittleEndian(this.timestamp, 8), // 8 byte buffer
+      intToLittleEndian(this.receiver_services, 8), // 8 byte buffer
+      this.receiverIp, // 16 byte buffer - in correct format
+      intToLittleEndian(this.receiver_port, 2), // 2 byte buffer
+      intToLittleEndian(this.sender_services, 8), // 8 byte buffer
+      this.senderIp, // 16 byte buffer - in correct format
+      intToLittleEndian(this.sender_port, 2), // 2 byte buffer
+      this.nonce, // 8 byte buffer - in correct format
+      intToLittleEndian(this.user_agent.length, 1), // converts user agent length to 1 byte buffer
+      this.user_agent, // 1 byte buffer
+      intToLittleEndian(this.last_block, 4), // 4 byte buffer
+      Buffer.from([this.relay ? 0x01: 0x00]) // converts to 1 byte buffer
+    ]);
+  }
 }
 
-const serialiseVersion = (msg) => {
-  // serialises version fields into buffer of bytes for transmission over the Bitcoin network
-  return Buffer.concat([
-    intToLittleEndian(msg.version, 4), // 4 byte buffer
-    intToLittleEndian(msg.services, 8), // 8 byte buffer
-    intToLittleEndian(msg.timestamp, 8), // 8 byte buffer
-    intToLittleEndian(msg.receiver_services, 8), // 8 byte buffer
-    msg.receiverIp, // 16 byte buffer - in correct format
-    intToLittleEndian(msg.receiver_port, 2), // 2 byte buffer
-    intToLittleEndian(msg.sender_services, 8), // 8 byte buffer
-    msg.senderIp, // 16 byte buffer - in correct format
-    intToLittleEndian(msg.sender_port, 2), // 2 byte buffer
-    msg.nonce, // 8 byte buffer - in correct format
-    intToLittleEndian(msg.user_agent.length, 1), // converts user agent length to 1 byte buffer
-    msg.user_agent, // 1 byte buffer
-    intToLittleEndian(msg.last_block, 4), // 4 byte buffer
-    Buffer.from([msg.relay ? 0x01: 0x00]) // converts to 1 byte buffer
-  ])
-
-}
 
 
+module.exports = Version;
 
 
 

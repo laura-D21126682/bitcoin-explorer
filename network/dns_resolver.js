@@ -1,9 +1,11 @@
 
 const dns = require('dns');
+const { address } = require('ip');
 const { promisify } = require('util');
 
 // promises
 const dnsResolve4 = promisify(dns.resolve4);
+const dnsResolve6 = promisify(dns.resolve6);
 
 /**
  * The getIps function returns arroy of valid IP addresses on the BTC network
@@ -14,7 +16,10 @@ const dnsResolve4 = promisify(dns.resolve4);
 const getIps = async (dns_seed) => {
 
   try {
-    const addresses = await dnsResolve4(dns_seed);
+    const ipv4Addresses = await dnsResolve4(dns_seed);
+    const ipv6Addresses = await dnsResolve6(dns_seed);
+    const addresses = ipv4Addresses.concat(ipv6Addresses);
+
     console.log(`DNS Seed: ${dns_seed},\n IPV 4 Addresses: ${JSON.stringify(addresses)}`);
     return addresses;
 
