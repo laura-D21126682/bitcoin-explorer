@@ -1,5 +1,7 @@
 
 const net = require('net');
+const logger = require('../utils/logger');
+const chalk = require('chalk'); // colour variables
 
 /**
  * Function creates TCP connection on Bitcoin Network
@@ -16,19 +18,32 @@ const createConnection = (port, host) => {
 
     // Event listener - Successful connection
     socket.once('connect', () => {
-      console.log(`Connected to node ${host}:${port}`)
+      logger.success(`TCP connection success at: ${chalk.cyanBright(`${host}:${port}`)}`);
       resolve(socket);
     });
 
     // Event listener - Error
     socket.once('error', (err) => { 
-      console.error(`Error connecting to node ${host}:${port}: `, err);
+      logger.error(`TCP connection failure, error connecting ${chalk.redBright(`${host}:${port}`)}: ${err}`);
+      socket.destroy()
       reject(err);
     });
 
+    // Event listener - gracefully end connection
+    socket.once('end', () => logger.warn(`TCP connection ending ${chalk.yellowBright(`${host}:${port}`)}`));
+
     // Event listener - Disconnect
-    socket.once('end', () => console.log(`Disconnected from node ${host}:${port}`));
+    socket.once('close', (err) => {
+      if(err) {
+        logger.warn(`TCP connection closed with error '${err}' ${chalk.yellowBright(`${host}:${port}`)}`);
+      } else {
+        logger.warn(`TCP connection closed ${chalk.yellowBright(`${host}:${port}`)}`);
+      }
+        
+    });
+    
   });
 }
+
 
 module.exports = createConnection;

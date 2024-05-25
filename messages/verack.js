@@ -14,7 +14,7 @@ module.exports = Verack;
 /**
  * Verack Message:
  * - https://learnmeabitcoin.com/technical/networking/#version
- * 
+ *
  The "verack" is a simple message header without a payload:
 ┌─────────────┬──────────────┬───────────────┬───────┬─────────────────────────────────────┐
 │ Name        │ Example Data │ Format        │ Size  │ Example Bytes                       │

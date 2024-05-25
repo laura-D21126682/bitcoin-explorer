@@ -1,6 +1,7 @@
 
 const dns = require('dns');
-const { address } = require('ip');
+const logger = require('../utils/logger');
+const chalk = require('chalk'); // colours variables
 const { promisify } = require('util');
 
 // promises
@@ -10,8 +11,8 @@ const dnsResolve6 = promisify(dns.resolve6);
 /**
  * The getIps function returns arroy of valid IP addresses on the BTC network
  *  - A DNS seed is taken as a parameter
- *  - dns.resolve4: resolves all IPv4 addresses of the given DNS Seed
- *  - @param {string} dns_seed - DNS Seed
+ *  - dns.resolve4: resolves all IPv4 addresses of given DNS Seed
+ *  - dns.resolve6: resolves all ipv6 addesses of given DNS Seed
  */
 const getIps = async (dns_seed) => {
 
@@ -20,11 +21,13 @@ const getIps = async (dns_seed) => {
     const ipv6Addresses = await dnsResolve6(dns_seed);
     const addresses = ipv4Addresses.concat(ipv6Addresses);
 
-    console.log(`DNS Seed: ${dns_seed},\n IPV 4 Addresses: ${JSON.stringify(addresses)}`);
+    logger.info(`DNS Seed: ${chalk.blackBright(`${dns_seed}`)}`);
+    logger.info(`IPV4 Addresses:  ${chalk.blackBright(`${JSON.stringify(ipv4Addresses)}`)}`);
+    logger.info(`IPV6 Addresses: ${chalk.blackBright(`${JSON.stringify(ipv6Addresses)}`)}`);
     return addresses;
 
   } catch (err) {
-    console.error(`Error resolving DNS Seed: ${dns_seed}`);
+    logger.error(`Error resolving DNS Seed: ${chalk.redBright(`${dns_seed}`)}`);
   }
 
 }; 

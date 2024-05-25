@@ -5,9 +5,9 @@ const { hash256, intToLittleEndian } = require('../utils/helper');
 const MAGIC_NUMBER = process.env.MAGIC_NUMBER;
 
 class Header {
-  constructor({
+  constructor({ 
     command, 
-    payload,
+    payload, 
   } = {}) {
     this.magic = Buffer.from(MAGIC_NUMBER, 'hex'); // 4 byte magic num 
     
@@ -36,7 +36,7 @@ class Header {
 
 module.exports = Header;
 
- 
+
 
 /**
  * Header: (version message) 

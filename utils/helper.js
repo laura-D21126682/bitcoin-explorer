@@ -23,6 +23,24 @@ const intToLittleEndian = (int, length) => {
 
 
 /**
+ * Function to convert little endian byte sequence  to int
+ * @param {*} buffer - number(int) being converted
+ */
+const littleEndianToInt = (buffer) => {
+
+  let intValue;
+  const length = buffer.length;
+  
+  if (length === 8) {
+    intValue = buffer.readBigUInt64LE(0);
+  } else {
+    intValue = buffer.readUIntLE(0, length); 
+  }
+  return intValue;
+}
+
+
+/**
  * Function to convert given IP address to the correct format
  * - Converts 4 Byte IPv4 address to 16 Byte IPv6 address buffer
  * - Else directly converts IPv6 address to buffer
@@ -59,6 +77,7 @@ const hash256 = (input) => {
 
 module.exports = {
   intToLittleEndian,
+  littleEndianToInt,
   ipToBuffer,
   hash256,
 }
