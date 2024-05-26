@@ -3,6 +3,7 @@ const Version = require('../messages/version');
 const Verack = require('../messages/verack');
 const Ping = require('../messages/ping');
 const Pong = require('../messages/pong');
+const GetData = require('../messages/getData');
 
 /**
  * Function creates version network message
@@ -50,10 +51,21 @@ const pongMessage = () => {
   return networkMessage;
 }
 
+const getDataMessage = (inventoryArr) => {
+  const getData = new GetData(); // Creates new instance of GetData
+  getData.loadInvData(inventoryArr); // Loads inv data into GetData Message
+  const serialisedGetData = getData.serialise(); 
+  const header = new Header({ command: 'getData', payload: serialisedGetData });
+  const serialisedHeader = header.serialise();
+  const networkMessage = Buffer.concat([serialisedHeader, serialisedGetData]);
+  return networkMessage;
+}
+
 
 module.exports = {
   versionMessage,
   verackMessage,
+  getDataMessage,
   pingMessage,
   pongMessage,
 };

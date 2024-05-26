@@ -12,7 +12,7 @@ const chalk = require('chalk');
 
 const foreverLoop = async (socket, address) => {
   
-  logger.success(`💗💗💗💗 Entering Foreverloop with Node ${address}💗💗💗💗`);
+  logger.success(`💗💗💗💗 Entering Foreverloop with ${address}💗💗💗💗`);
 
   // Listens and responds to incoming messages by type
   socket.on('data', (data) => messageHandler(socket, data, address));
