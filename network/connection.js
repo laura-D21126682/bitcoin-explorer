@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const chalk = require('chalk');
 const getIps = require('./dns-resolver');
 const handshake = require('./handshake');
+const foreverLoop = require('./foreverLoop');
 require('dotenv').config();
 
 // Import .env vars
@@ -54,7 +55,7 @@ const connection = async (addresses) => {
       if(performHandshake === true) { // On Success
         logger.success(`Successful Handshake ${chalk.cyanBright(`${address}`)}`);
         successfulHandshake = true; // Update variable
-        foreverLoop(socket);
+        await foreverLoop(socket, address); // awaits - async function 'foreverloop' with successfull address
         break; // Exits for loop
       } else { // Else unsuccessful handshake
         logger.warn(`Unsuccessful Handshake ${chalk.yellowBright(`${address}`)}`);
@@ -73,15 +74,6 @@ const connection = async (addresses) => {
   }
 };
 
-/**
- * Forever Loop handles ongoing processes after successful handshake
- * - Connection is kept open by responding to Ping messages with Pong and sending out interval timed Pings
- */
-const foreverLoop = (socket) => {
-    logger.success(`💗💗💗💗 Entering Foreverloop 💗💗💗💗`);
-    // TODO: Respond to pings with pongs
-    // TODO: Setup interval timed pings
-}
 
 // Starts connection process with provided DNS Seed
 loadConnection(DNS_SEED); 
