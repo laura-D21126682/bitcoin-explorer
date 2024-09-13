@@ -1,4 +1,6 @@
 
+const { logger } = require('../utils/logHandler');
+
 class Verack {
   constructor() {
     this.command = 'verack';

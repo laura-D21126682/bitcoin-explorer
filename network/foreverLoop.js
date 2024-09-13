@@ -1,38 +1,42 @@
-const messageHandler = require('./messageHandler');
-const { pingMessage } = require('../services/messageService');
-const logger = require('../utils/logger');
-const chalk = require('chalk');
+
+const { logger } = require('../utils/logHandler');
+const commandHandler = require('../network/commandHandler');
+const { pingMessage } = require('../builders/messageBuilder');
+
 
 /**
  * Forever Loop handles ongoing processes after successful handshake
  * - Connection is kept open by responding to Ping messages with Pong and sending out interval timed Pings
- * @param {object} socket - TCP connection
- * @param {string} address - Node IP Address
  */
-
-const foreverLoop = async (socket, address) => {
+  const foreverLoop = async (socket, address) => {
+    return new Promise((resolve) => {
+      logger('success', '❤️❤️ Entering Foreverloop with', address, '❤️❤️');
+      let handshakeComplete = true; // need to pass to command handler for switch logic
   
-  logger.success(`💗💗💗💗 Entering Foreverloop with ${address}💗💗💗💗`);
+      // Listens and responds to incoming messages by type
+      socket.on('data', (data) => commandHandler(socket, data, address, handshakeComplete));
+    
+      // Ping node every 30 seconds to keep connection alive
+      const pingTimer = setInterval(() => {
+        try{
+          const networkPingMessage = pingMessage();
+          socket.write(networkPingMessage);
+          logger('info', 'ForeverLoop.pingTimer: Handshake Status:', handshakeComplete);
+          logger('info', 'ForeverLoop.pingTimer: Sent Message Ping to:', address);
+        } catch (err) {
+          logger('error', err, 'PingTimer.setInterval:', address)
+        }
+      }, 20000); // 30 second timeout
 
-  // Listens and responds to incoming messages by type
-  socket.on('data', (data) => messageHandler(socket, data, address));
+      // Listen for 
+      socket.once('handshakeBroken', (err) => {
+        logger('error', err, 'ForeverLoop.handshakeBroken:', address);
+        handshakeComplete = false;
+        clearInterval(pingTimer); // clean up
+        resolve(false); // exits with promise with false if the handshake is broken
+      });
 
-
-  /**
-   * SetInter Function is called every 60 Seconds to keep the connection alive
-   * - Sends Ping Message every 60 seconds
-   * - If node still alive should respond with pong message 
-   */
-  setInterval(() => {
-    try{
-      const networkPingMessage = pingMessage();
-      socket.write(networkPingMessage);
-      logger.info(`Sent Message ${chalk.greenBright(`ping`)} to ${chalk.greenBright(`${address}`)}`);
-    } catch (err) {
-      logger.error(`Ping message to ${address} failed: ${err}`);
-    }
-  }, 30000); // 30 second timeout
-
-}
+  });
+} 
 
 module.exports = foreverLoop;

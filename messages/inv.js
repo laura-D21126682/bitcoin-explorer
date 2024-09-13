@@ -1,9 +1,6 @@
 
-const varint = require('varint'); // library to handle encoding and decoding varInts
-const { littleEndianToInt } = require(`../utils/helper`);
-const logger = require('../utils/logger');
-const chalk = require('chalk');
-
+const { logger } = require('../utils/logHandler');
+const {  decodeVarInt } = require(`../utils/helper`);
 
 class Inv {
   constructor({ count, inventory } = {}) {
@@ -13,40 +10,34 @@ class Inv {
   }
 
   // Parse Inv buffer message 
-  // - Returns parsed Inv Object
-  static parse(buffer) {
+  static parse(payload) {
     try {
-      // inv
-      const invCount = varint.decode(buffer); // Varint lib decodes buffers first byte (varint) to get inventory count
-      const varIntSize = varint.decode.bytes; // Number of bytes used by varInt
       
-     
-      buffer = buffer.slice(varIntSize); // Removes varInt from buffer .slice(varIntSize)
-      if (buffer.length < 36) throw new Error('Buffer too short');
+      let inventoryArray = [];
+      let offset = 0;
+      const itemCount = decodeVarInt(payload, offset);
+      offset += itemCount.size;
 
-      const inventoryArr = []; // Store parsed inventory items
-
-      // loops through each inventory item using invCount
-      for (let i = 0; i < invCount; i++) {
-
-        // type 1 = transaction, type 2 = a block
-        const type = littleEndianToInt(buffer.slice(0, 4)); // Item type - first 4 bytes
-        buffer = buffer.slice(4); // Removes type (first 4 bytes) from buffer - .slice(4)
-
-        const hash = buffer.slice(0, 32).reverse(); // Hash = first 32 bytes of buffer - reverse() 
-        buffer = buffer.slice(32); // Remove hash (first 32 bytes) from buffer - .slice(32)
-        inventoryArr.push({ type, hash }); // Push item to inventory array
+      logger('info', 'Inv.Parse - Inventory Count: ', itemCount.value);
+  
+      for (let i = 0; i < itemCount.value; i++) {
+        // Each inventory item is 36 bytes
+        const type = payload.readUInt32LE(offset);
+        offset += 4;
+        const hash = payload.slice(offset, offset + 32).toString('hex');
+        offset += 32;
+        
+        inventoryArray.push({ type, hash });
       }
-
-      return new Inv({ count: invCount, inventory: inventoryArr }); // Returns new Inv Object with parsed values
+    
+      return new Inv({ count: itemCount.value, inventory: inventoryArray }); // Returns new Inv Object with parsed values
 
     } catch (err) {
-      logger.error(`Error Parsing Inv Message ${chalk.redBright(`${err}`)}`);
+      logger('error', 'Inv.parse', err);
       return null;
     }
   }
 }
-
 
 
 module.exports = Inv;

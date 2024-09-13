@@ -1,49 +1,85 @@
 
+const {logger } = require('../utils/logHandler');
 const net = require('net');
-const logger = require('../utils/logger');
-const chalk = require('chalk'); // colour variables
 
-/**
- * Function creates TCP connection on Bitcoin Network
- * - connect to DNS Seed
- * - Promise resolves with tcp connection or rejects if error
- * @param {*} port - Port number to connect to, Bitcoin Mainnet: 8333
- * @param {*} host - DNS Seed to connect to
- */
+
 const createConnection = (port, host) => {
   return new Promise((resolve, reject) => { 
-    
-    // Create tcp connection
+
     const socket = net.createConnection({ port, host });
 
-    // Event listener - Successful connection
+    /**
+     * Socket functions
+     */
+
+    // Comprehensive cleanup to prevent data leaks
+    const cleanup = (err) => {
+      logger('warn', 'Cleaning up....');
+      socket.emit('handshakeBroken');
+      socket.removeAllListeners();
+      if (socket) {
+        socket.end();
+        socket.destroy(err || new Error('ECONNRESET'));
+      }
+    }
+
+    socket.cleanup = cleanup;
+
+    // Clear specific data listener
+    socket.clearDataListener = (onData) => {
+      socket.off('data', onData);
+    }
+
+    // Check if data listeners are removed
+    const dataListners = socket.checkDataListenersRemoved = () => {
+      const listeners = socket.listeners('data');
+      logger('success', listeners.length, listeners);
+      return listeners.length;
+    }
+
+    socket.dataListners = dataListners;
+
+    
+    /**
+     * Event listners
+     */
+    
+    // On connect
     socket.once('connect', () => {
-      logger.success(`TCP connection success at: ${chalk.cyanBright(`${host}:${port}`)}`);
+      logger('success', 'CreateConnection - Connect success with', host, ':', port );
       resolve(socket);
     });
 
-    // Event listener - Error
+    // On error
     socket.once('error', (err) => { 
-      logger.error(`TCP connection failure, error connecting ${chalk.redBright(`${host}:${port}`)}: ${err}`);
-      socket.destroy()
+      logger('error', err, 'CreateConnection - Error with', host, ':', port);
+      cleanup(err);
+      logger('warn', 'Cleaned up...');
       reject(err);
     });
 
-    // Event listener - gracefully end connection
-    socket.once('end', () => logger.warn(`TCP connection ending ${chalk.yellowBright(`${host}:${port}`)}`));
+            
+    // On end 
+    socket.once('end', () => {
+      logger('warn', 'CreateConnection - Ending network connection', host, ':', port);
+    })
 
-    // Event listener - Disconnect
+    // On close
     socket.once('close', (err) => {
       if(err) {
-        logger.warn(`TCP connection closed with error '${err}' ${chalk.yellowBright(`${host}:${port}`)}`);
+        logger('error', err, 'CreateConnection - Closing network connection with error', host, ':', port);
+        cleanup(err);
+        reject(err);
       } else {
-        logger.warn(`TCP connection closed ${chalk.yellowBright(`${host}:${port}`)}`);
+        logger('warn', 'CreateConnection - Closing network connection without error', host, ':', port);
+        cleanup();
+        resolve();
       }
-        
     });
-    
+
   });
 }
+
 
 
 module.exports = createConnection;

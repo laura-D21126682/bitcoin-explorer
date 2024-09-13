@@ -1,7 +1,6 @@
 
 const dns = require('dns');
-const logger = require('../utils/logger');
-const chalk = require('chalk'); // colours variables
+const { logger } = require('../utils/logHandler');
 const { promisify } = require('util');
 
 // promises
@@ -21,13 +20,12 @@ const getIps = async (dns_seed) => {
     const ipv6Addresses = await dnsResolve6(dns_seed);
     const addresses = ipv4Addresses.concat(ipv6Addresses);
 
-    logger.info(`DNS Seed: ${chalk.blackBright(`${dns_seed}`)}`);
-    logger.info(`IPV4 Addresses:  ${chalk.blackBright(`${JSON.stringify(ipv4Addresses)}`)}`);
-    logger.info(`IPV6 Addresses: ${chalk.blackBright(`${JSON.stringify(ipv6Addresses)}`)}`);
+    logger('info', 'IPV4 Addresses:', JSON.stringify(ipv4Addresses));
+    logger('info', 'IPV6 Addresses:', JSON.stringify(ipv6Addresses));
     return addresses;
 
   } catch (err) {
-    logger.error(`Error resolving DNS Seed: ${chalk.redBright(`${dns_seed}`)}`);
+    logger(err, 'Error resolving DNS Seed:', dns_seed);
   }
 
 }; 

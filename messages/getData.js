@@ -1,34 +1,47 @@
 
-
-const varint = require('varint'); // library to handle encoding and decoding variable length ints (varints)
-const { intToLittleEndian } = require(`../utils/helper`);
+const { encodeVarInt } = require(`../utils/helper`);
+const { logger } = require('../utils/logHandler');
 
 
 class GetData {
-  constructor({ count, inventory = [] } = {}) {
+  constructor({ count, inventory } = {}) {
     this.command = 'getdata';
     this.count = count; // number of inventory items
     this.inventory = inventory; // inventory items array
   }
 
 
-  // Updates GetData payload with inv data
-  loadInvData(inventoryArr) {
-    // Push each item from inv inventory array to getData inventory array
-    inventoryArr.forEach(item => this.inventory.push({ type: item.type, hash: item.hash }));
-    this.count = this.inventory.length; 
+  loadInvData(invItems) {
+
+    let inventoryArray = [];
+
+    invItems.forEach(item => {
+      inventoryArray.push({ type: item.type, hash: item.hash });
+    })
+
+    this.count = inventoryArray.length;
+    this.inventory = inventoryArray;
+    
   }
 
 
 
   serialise() {
-    const countEncoded = Buffer.from(varint.encode(this.count)); // Encode count as varInt
-    const inventoryEncoded = this.inventory.map(item => Buffer.concat([
-      intToLittleEndian(item.type, 4), // convert inventory type to little endian (4 bytes)
-      Buffer.from(item.hash, 'hex').reverse() // Convert inventory hash to buffer and reverse byte order
-    ])); 
 
-    return Buffer.concat([ countEncoded, ...inventoryEncoded ]); 
+    const countEncoded = encodeVarInt(this.count); // Encode count as varInt
+
+    console.log(this.inventory);
+    const itemsBuffer = Buffer.concat(this.inventory.map(item => {
+
+      const typeBuffer = Buffer.alloc(4);
+      typeBuffer.writeUInt32LE(item.type, 0);
+      const hashBuffer = Buffer.from(item.hash, 'hex');
+      return Buffer.concat([typeBuffer, hashBuffer]);
+
+    }));
+
+    const payload = Buffer.concat([ countEncoded, itemsBuffer ]); 
+    return payload;
   }
 
 }

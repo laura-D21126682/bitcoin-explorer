@@ -1,57 +1,116 @@
-
-const { verackMessage, pongMessage, getDataMessage } = require('../services/messageService');
-const Header = require('../messages/header');
+const { logger } = require('../utils/logHandler');
+const { verackMessage, getBlocksMessage, pongMessage, getDataMessage } = require("../builders/messageBuilder");
 const Inv = require('../messages/inv');
-const logger = require('../utils/logger');
-const chalk = require('chalk');
-    
-    
-// Listen for incoming messages to complete handshake
-const messageHandler = (socket, data, address) => { 
-  
-  const header = Header.parse(data); // parse header of received message
+const Block = require('../messages/block');
+const Transaction = require('../messages/tx');
+const { setLatestBlock } = require('../store/blockData'); // Global variable - stores latest block
+const { setLatestTx } = require('../store/txData'); // Global variable - stores latest tx 
+const { broadcast } = require('../broadcast');
 
-  if ( header === null) { // Handle invalid headers
-    logger.error('Invalid Message Format');
-    return;
+console.log(broadcast);
+
+const getBlocks = (socket, address) => {
+  const networkBlockMessage = getBlocksMessage();
+  socket.write(networkBlockMessage);
+  console.log(`Sent GetBlocks to ${address}`);
+}
+
+const handleVersion = (socket, address) => {
+  logger('info', 'MessageHandler - Received Version', address);
+
+  // websocket broadcast
+  broadcast(`received version from ${address}`);
+
+  const networkVerackMessage = verackMessage(); // 3. Send verack msg upon receiving version
+  socket.write(networkVerackMessage);
+  logger('info', 'MessageHandler - Sent Verack to', address);
+
+  broadcast(`sent verack to ${address}`);
+}
+
+const handleVerack = (socket, address) => {
+  logger('info', 'MessageHandler - Received Verack from', address);
+
+  broadcast(`received verack from ${address}`);
+
+  socket.emit('performedHandshake'); // Emit successful handshake event - updates handshake function
+
+  broadcast(`performed handshake with ${address}`);
+  getBlocks(socket, address);
+}
+
+const handlePing = (socket, address) => {
+  logger('info', 'MessageHandler - Received Ping from', address);
+
+  // websocket broadcast
+  broadcast(`received ping from ${address}`);
+
+  const networkPongMessage = pongMessage();
+  socket.write(networkPongMessage);
+  logger('info', 'MessageHandler - Sent Pong to', address);
+
+  // websocket broadcast
+  broadcast(`sent pong to ${address}`);
+}
+
+const handlePong = (socket, address) => {
+  logger('info', 'MessageHandler - Received Pong from', address);
+
+    // websocket broadcast
+    broadcast(`Received Pong from ${address}`);
+}
+
+const handleInv = (socket, address, payload) => {
+  logger('info', 'MessageHandler - Received Inv from', address);
+  const parsedInv = Inv.parse(payload);
+  logger('info', 'MessageHandler - Parsed Inv:', JSON.stringify(parsedInv));
+
+  broadcast(parsedInv);
+
+  const networkGetDataMessage = getDataMessage(parsedInv.inventory);
+  socket.write(networkGetDataMessage);
+  logger('info', 'MessageHandler - Sent GetData to', address);
+}
+
+const handleBlock = (address, payload) => {
+  logger('block', 'MessageHandler - Received Block from', address);
+  const parsedBlock = Block.parse(payload);
+  if (parsedBlock) {
+    parsedBlock.calculateHash();
+    parsedBlock.calculateDifficulty();
+    const objBlock = parsedBlock.toJsObject();
+    logger('block', `MessgeHandler - Parsed Block:\n`, JSON.stringify(objBlock, null, 2));
+    setLatestBlock(objBlock);
+
+    // websocket broadcast
+    broadcast(objBlock);
+  } else {
+    logger('error', 'MessageHandler - Failed to Parse Block from', address);
   }
+}
 
-  const command = header.command; // Extract command from header
-  const payload = data.slice(24); // Extract payload after the header(24 bytes)
+const handleTx = (address, payload) => {
+  logger('tx', 'MessageHandler - Received Tx from', address);
+  const {tx: parsedTx} = Transaction.parse(payload);
+  if (parsedTx) {
+    const objTx = parsedTx.toJsObject();
+    logger('tx', `MessgeHandler - Parsed Tx:\n`, JSON.stringify(objTx, null, 2));
+    setLatestTx(objTx);
 
-  // Respond to messages by type
-  switch (command) {
-    case 'version': // 2. Received Version Message
-      logger.info(`Received Message ${chalk.greenBright(`${command}`)} from ${chalk.greenBright(`${address}`)}`);
-      const networkVerackMessage = verackMessage(); // 3. Send verack msg upon receiving version
-      socket.write(networkVerackMessage);
-      logger.info(`Sent Message ${chalk.greenBright(`verack`)} to ${chalk.greenBright(`${address}`)}`);
-      break;
-    case 'verack': // 4. Received Verack Message = handshake complete
-      logger.info(`Received Message ${chalk.greenBright(`verack`)} from ${chalk.greenBright(`${address}`)}`);
-      socket.emit('performedHandshake'); // Emit successful handshake event
-      break;
-    case 'ping':
-      logger.info(`Received Message ${chalk.greenBright(`${command}`)} from ${chalk.greenBright(`${address}`)}`);
-      const networkPongMessage = pongMessage(); // 3. Send verack msg upon receiving version
-      socket.write(networkPongMessage);
-      logger.info(`Sent Message ${chalk.greenBright(`pong`)} to ${chalk.greenBright(`${address}`)}`);
-      break;
-    case 'pong':
-      logger.info(`Received Message ${chalk.greenBright(`${command}`)} from ${chalk.greenBright(`${address}`)}`);
-      break;
-    case 'inv': // 4. Received Verack Message = handshake complete
-      logger.info(`Received Message ${chalk.greenBright(`${command}`)} from ${chalk.greenBright(`${address}`)}`);
-      const invMessage = Inv.parse(payload);
-      logger.info(`Parsed Message ${chalk.greenBright(`${command}`)} ${chalk.greenBright(JSON.stringify(invMessage))}`);
-      const networkGetDataMessage = getDataMessage(invMessage.inventory); // Creates serialsed getData with inv payload
-      socket.write(networkGetDataMessage); // send getData message as response to inv
-      logger.info(`Sent Message ${chalk.greenBright(`getData`)} to ${chalk.greenBright(`${address}`)}`);
-      break; 
-    default: // Logs any other msg types received
-      logger.info(`Received Message ${chalk.blackBright(`${command}`)} from ${chalk.blackBright(`${address}`)}`); 
-  } 
-};
+    // websocket broadcast
+    broadcast(objTx);
+  } else {
+    logger('error', 'MessageHandler - Failed to Parse Tx from', address);
+  }
+}
 
-
-module.exports = messageHandler;
+module.exports = {
+  handleVersion,
+  handleVerack,
+  getBlocks,
+  handlePing,
+  handlePong,
+  handleInv,
+  handleBlock,
+  handleTx
+}

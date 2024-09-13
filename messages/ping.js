@@ -1,4 +1,5 @@
 
+const { logger } = require('../utils/logHandler');
 const crypto = require('crypto');
 
 class Ping {

@@ -1,7 +1,6 @@
-
+const { logger } = require('../utils/logHandler');
 const { hash256, intToLittleEndian, littleEndianToInt } = require('../utils/helper');
-const logger = require('../utils/logger');
-const chalk = require('chalk');
+
 require('dotenv').config();
 
 const MAGIC_NUMBER = process.env.MAGIC_NUMBER;
@@ -12,13 +11,10 @@ class Header {
     payload, 
   } = {}) {
     this.magic = Buffer.from(MAGIC_NUMBER, 'hex'); // 4 byte magic num 
-    
     this.command = Buffer.alloc(12); // Set buffer to 12 bytes
     this.command.write(command, 'ascii'); // writes command in ASCII to command buffer
-    
     this.payload = payload; // Payload (e.g. Version message)
     this.payloadLength = payload.length; // Message size
-
     // Performs double sha245 on payload and takes the first 4 bytes
     this.checksum = hash256(payload).slice(0, 4); 
   }
@@ -34,31 +30,28 @@ class Header {
   }
 
   // Extracts header from buffer message and returns parsed header object
-  static parse(msg) {
+  static parse(buffer) {
     try {
       // First check buffer message is greater than 24 Bytes
-      if (msg.length < 24 ){ // If less - too short to be valid message
-        logger.info(`Message Length: ${chalk.greenBright(`${msg.length}`)}`);
-        logger.error('Too Short to Parse!'); 
-        return null;
+      if (buffer.length < 24 ){ // If less - too short to be valid message
+        throw new Error(`Buffer less than 24 bytes: ${buffer.length} bytes`)
       }
-    
       // Extract and parse header elements
-      const command = msg.slice(4, 16).toString('ascii').replace(/\0/g, ''); // Extracts and removes null chars
-      const magicNumber = msg.slice(0, 4).toString('hex'); // Bitcoin magic number
-      const payloadBuffer = msg.slice(16, 20); // Extracts payload buffer
+      const command = buffer.slice(4, 16).toString('ascii').replace(/\0/g, ''); // Extracts and removes null chars
+      const magicNumber = buffer.slice(0, 4).toString('hex'); // Bitcoin magic number
+      const payloadBuffer = buffer.slice(16, 20); // Extracts payload buffer
       const payloadLength = littleEndianToInt(payloadBuffer); // Converts to int
-      const checksum = msg.slice(20, 24).toString('hex'); // Checksum as hex string
+      const checksum = buffer.slice(20, 24).toString('hex'); // Checksum as hex string
     
       // Returns parsed header elements as object
+      // TODO:
       return { magicNumber, command, payloadLength, checksum };
     } catch (err) {
-      logger.error(`Error Parsing Header: ${chalk.redBright(`${err}`)}`);
+      logger('error', 'Header.parse', err);
       return null;
     }
   }
 }
-
 
 
 module.exports = Header;

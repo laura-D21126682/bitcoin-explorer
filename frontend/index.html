@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bitcoin Reader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.1/css/bulma.min.css">
+    <link rel="stylesheet" href="css/dataTables-bulma.css">
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="stylesheet" href="./css/prism.css">
+</head>
+<body>
+  <div class="bg"> </div> <!-- background image and styling -->
+  
+  <div class="header-bg"></div>
+  <section class="header">
+    <div id="logo"></div>
+    <h1>[ block_reader ]</h1>
+  </section> 
+  
+  <div class="page-wrapper">  <!-- Main content page wrapper -->
+    <section class="section"> <!-- main section-->
+      <div class="dashboard">
+        <div class="left-dash">
+          <div id="node-connect" class="box">
+            <div class="field">
+              <label for="dns-seed">Select DNS Seed:</label>
+              <div class="select is-primary is-fullwidth is-small" >
+                <select name="dns-seed" class="custom-select">
+                  <option>Select a dns seed</option>
+                  <option>seed.bitcoin.sipa.be</option>
+                  <option>dnsseed.bluematt.me</option>
+                  <option>dnsseed.bitcoin.dashjr.org</option>
+                  <option>seed.bitcoinstats.com</option>
+                  <option>seed.bitcoin.jonasschnelli.ch</option>
+                </select>
+              </div>
+            </div> <!-- end field -->
+
+            <div class="field">
+              <label for="ip-address">Enter IP Address:</label>
+              <input name="ip-addresses" class="input is-primary is-small" type="text">
+            </div>
+
+            <div class="field has-addons button-group">
+              <p class="control">
+                <button class="button is-fullwidth is-small" id="reset-button">
+                  <span>Reset</span>
+                </button>
+              </p>
+              <p class="control">
+                <button class="button is-fullwidth is-small" id="connect-button">
+                  <span>Connect</span>
+                </button>
+              </p>
+              <p class="control">
+                <button class="button is-fullwidth is-small" id="disconnect-button">
+                  <span>Disconnect</span>
+                </button>
+              </p>
+            </div>
+          </div> <!-- end box -->
+        </div> <!-- end left-dash -->
+        
+        <div class="right-dash">
+          <div id="message-box">
+            <div id="block-msg" class="box">
+              <p>Block Count: <span id="blockCountValue">0</span></p>
+            </div>
+            <div id="tx-msg" class="box">
+              <p>Tx Count: <span id="txCountValue">0</span></p>
+            </div>
+          </div>
+          <div id="node-stats" class="box">
+            <p>Node Info</p>
+          </div>
+        </div> <!-- end right-dash -->        
+      </div> <!-- end dashboard -->
+
+      <div class="block"></div>
+      <p class="block ">Placeholder for some interesting data, or information on how to read the tabs/tables</p>
+      
+      <div class="tab-container">
+        <div class="tab-group box">
+          <!-- Tabs Navigation -->
+          <div class="tabs tab-btns-container">
+            <button class="tab-button" id="block-button" data-tab="block-messages">
+              <h2>~/block-messages</h2>
+            </button>
+            <button class="tab-button" id="tx-button" data-tab="tx-messages">
+              <h2>~/tx-messages</h2>
+            </button>
+            <button class="tab-button" id="terminal-button" data-tab="btcStream">
+              <h2>>_ Bitcoin Terminal</h2>
+            </button>
+            <button class="tab-button" id="dummy-button"></button>
+          </div>
+ 
+          <!-- Tab content -->
+          <!-- 1. Block Messages-->
+          <div id="block-messages" class="tab-content">
+              <table id="blockTable" class="table is-fullwidth is-striped">
+                <thead>
+                  <tr>
+                    <th>block-version</th>
+                    <th>block_hash</th>
+                    <th>timestamp</th>
+                    <th>tx_count</th>
+                    <th>difficulty</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+          </div>
+          
+          <!-- 2. TX Messages-->
+          <div id="tx-messages" class="tab-content is-hidden">
+            <table id="txTable" class="table is-fullwidth is-striped">
+              <thead>
+                <tr>
+                  <th>version</th>
+                  <th>byte_size</th>
+                  <th>in_count</th>
+                  <th>out_count</th>
+                  <th>lock_time</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <!-- 3. Console -->
+          <div id="btcStream" class="tab-content is-hidden">
+            <pre>
+              <p> >_ Bitcoin Powershell</p>
+              <code id="streamed-data" class="language-js"></code>
+            </pre>
+          </div>
+        </div> <!-- end tab-group -->
+      </div> <!-- end row-three -->
+    </section> <!-- end main section -->
+  </div> <!-- end wrapper container -->
+
+<!-- JavaScript Libraries -->
+<script src="./js/prism.js"></script>
+<script src="./js/script.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="./js/dataTables.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- Custom JavaScript -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('On load do this....');
+
+    // tab elements
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const preElement = document.querySelector('pre'); // code container
+    const codeBlock = document.getElementById('streamed-data');
+    // dashboard elements
+    const connectButton = document.getElementById('connect-button');
+    const disconnectButton = document.getElementById('disconnect-button');
+    const resetButton = document.getElementById('reset-button');
+    const blockCountValue = document.getElementById('blockCountValue');
+    const txCountValue = document.getElementById('txCountValue');
+
+    // DataTables Setup
+    const tableOptions = {
+      paging: true,
+      scrollCollapse: true,
+      scrollY: 280,
+    };
+    
+    const txTable = new DataTable('#txTable', tableOptions);
+    const blockTable = new DataTable('#blockTable', tableOptions);
+
+    // Tab Setup
+    const setActiveTab = (selectedTabId) => {
+      tabButtons.forEach(btn => {
+        btn.classList.toggle('is-active', btn.id === selectedTabId);
+      });
+
+      tabContents.forEach(content => {
+        const isTargetContent = content.id === document.getElementById(selectedTabId).getAttribute('data-tab');
+        content.classList.toggle('is-hidden', !isTargetContent);
+
+        // redraw dataTables to ensure properly aligned and updated on click
+        if (isTargetContent) {
+          if (content.id === 'block-messages') {
+            blockTable.columns.adjust().draw();
+          } else if (content.id === 'tx-messages') {
+            txTable.columns.adjust().draw();
+          }
+        }
+      });
+
+    }
+
+    setActiveTab('block-button'); // Set initial active tab
+
+    tabButtons.forEach(btn => { 
+      btn.addEventListener('click', () => {
+        setActiveTab(btn.id);
+      })
+    })
+
+
+    // Dashboard Setup
+    const startStreaming = () => {
+      socket.emit('start');
+    };
+
+    const stopStreaming = () => {
+      socket.emit('stop');
+    };
+
+    const reset = () => {
+      console.log('Resetting data....');
+
+      // Stop streaming BTC data
+      stopStreaming();
+      
+      // clear dataTables
+      blockTable.clear().draw();
+      txTable.clear().draw();
+
+      // reset counts
+      blockCountValue.textContent = '0';
+      txCountValue.textContent = '0';
+
+      // Clear console code
+      codeBlock.textContent = '';
+    };
+
+    connectButton.addEventListener('click', startStreaming);
+    disconnectButton.addEventListener('click', stopStreaming);
+    resetButton.addEventListener('click', reset);
+
+
+
+
+    function addTxToTable(data) {
+      const row = txTable.row.add([
+        data.version,
+        data.transaction_byte_size,
+        data.inCount,
+        data.outCount,
+        data.lock_time
+      ]).draw();
+    }
+
+    function addBlockToTable(data) {
+      const row = blockTable.row.add([
+        data.version,
+        data.hash,
+        data.timestamp,
+        data.transaction_count,
+        data.difficulty
+      ]).draw();
+    }
+
+    function updateCount(table, countValue) {
+      countValue.textContent = table.data().count();
+    }
+
+    // Socket Seup
+    const socket = io('http://localhost:3000', { reconnection: false });
+    socket.on('btcData', (data) => {
+      // prism console logic
+      const newData = JSON.stringify(data, null, 2);
+      codeBlock.textContent += newData + '\n';
+      preElement.scrollTop = preElement.scrollHeight; // Auto-scroll to the bottom
+
+      // populate tables logic
+      if (data.command === 'block') {
+        addBlockToTable(data); // It's a block
+        updateCount(blockTable, blockCountValue);
+      } else if (data.command === 'tx'){
+        addTxToTable(data);   // It's a transaction
+        updateCount(txTable, txCountValue);
+      }
+    });
+
+    socket.on('connection_error', (err) => {
+      console.error('Connection error: ', err);
+      alert('Failed to connect to the server');
+    })
+
+  }); // end of document loaded
+</script>
+</body>
+</html>

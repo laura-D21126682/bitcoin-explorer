@@ -1,47 +1,47 @@
-const { versionMessage, verackMessage } = require('../services/messageService');
-const messageHandler = require('./messageHandler');
-const logger = require('../utils/logger'); // Custom winston logger
-const chalk = require('chalk'); // Colour variables
+const { logger } = require('../utils/logHandler');
+const { versionMessage } = require('../builders/messageBuilder');
+
+const commandHandler = require('../network/commandHandler');
+
+
 
 // Function handles the handshake process - Exits on success or time-out
-const handshake = (socket, address) => {
+const handshake = async (socket, address) => {
   return new Promise((resolve) => {
 
-    let successfulHandshake = false;
+    let handshakeComplete = false;
 
-    // 1. Send Version Message
-    const networkVersionMessage = versionMessage(); 
+    const networkVersionMessage = versionMessage();     // 1. Send Version Message
     socket.write(networkVersionMessage);
-    logger.info(`Sent Message ${chalk.greenBright(`version`)}`);
-    
+    logger('info', 'Handshake: Sent Message Version:', address);
 
-    // Listens and responds to incoming messages by type
-    socket.on('data', (data) => messageHandler(socket, data, address));
-
- 
-    /**
-     * Performed Handshake Event
-     * - Signals success
-     * - Updates successfulHandshake variable
-     * - resolves node address
-     */
-    socket.once('performedHandshake', () => {
-      successfulHandshake = true;
-      resolve(true);
+    socket.once('data', (data) => {
+      commandHandler(socket, data, socket.remoteAddress, handshakeComplete);
     });
 
-  /**
-   * Time-out Function is called every 8 seconds
-   * - If handshake attempt unsuccessful, connection is closed and resolves false
-   */
-    setTimeout(() => {
-      if (!successfulHandshake) { 
-        logger.warn(`Handshake Timed Out with Node: ${address}`);
-        socket.destroy(); 
-        resolve(false); 
+    // setTimeout function - 5 seconds
+    const timeout = setTimeout(() => {
+      if (!handshakeComplete) { 
+        logger('warn', 'Handshake: Timed out with:', address);
+        handshakeComplete = false; 
+        socket.cleanup(); 
+        // socket.clearDataListener(onData); // socket.off
+        resolve(false); // promise resolves false
       }
-    }, 8000); // 8 second timeout
+    }, 5000); 
+
+    // Performed handshake event, emmitted by handleVerack function  
+    // Clear timeout event but keep socket open for foreverLoop 
+    socket.once('performedHandshake', () => {
+      handshakeComplete = true; // update handshake status
+      logger('debug', 'Handshake Complete: ', handshakeComplete);
+      clearTimeout(timeout);
+      resolve(true); // resolve promise
+    });
+
   });
 }
+
+
 
 module.exports = handshake;
